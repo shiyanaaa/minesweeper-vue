@@ -1,15 +1,20 @@
 <template>
-  <div :class="classComputed" @click="open" @contextmenu.prevent="flag" class="cell" :style="styleComputed">
+  <div :class="classComputed" @dblclick="openAll" @click="open" @contextmenu.prevent="flag" class="cell"
+    :style="styleComputed">
     {{ showValue }}</div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
-const emit = defineEmits(["open", "flag"])
+const emit = defineEmits(["open", "flag", "openAll"])
 const props = defineProps({
   cell: {
     type: Object,
     default: () => { }
+  },
+  index: {
+    type: Number,
+    default: 0
   }
 })
 const showValue = computed(() => {
@@ -33,10 +38,13 @@ const styleComputed = computed(() => {
   }
 })
 const open = () => {
-  emit("open", props.cell)
+  emit("open", props.cell, props.index)
+}
+const openAll = () => {
+  emit("openAll", props.cell, props.index)
 }
 const flag = () => {
-  emit("flag", props.cell)
+  emit("flag", props.cell, props.index)
 
 }
 

@@ -2,20 +2,16 @@
   <div class="grid" ref="gridRef" :style="style" @mousedown.prevent="mousedown" @mousemove.prevent="mousemove"
     @mouseup.prevent="mouseup">
     <div class="gridInner">
-      <div class="row" v-for="(row, index) in showList" :key="index">
-        <template v-for="(cellItem, index) in row" :key="index">
-          <cellItem v-if="cellItem" :cell="cellItem" @open="open" @flag="flag" />
-        </template>
-
-
-      </div>
+      <cellItem v-for="(row, index) in cell" :key="row.id" :cell="row" :index="index" @openAll="openAll" @open="open"
+        @flag="flag" />
     </div>
 
   </div>
 </template>
 
 <script setup>
-
+import { isIntersect } from '@/utils/tools';
+import { useWebsocket } from '@/websocket/websocket';
 import { ref, onMounted, computed } from 'vue'
 import { getCellByNum, openCell, flagCell, cancelFlagCell } from '@/api/cell';
 import cellItem from "@/components/cellItem.vue"
@@ -24,7 +20,38 @@ const cell = ref([])
 const gridRef = ref()
 const top = ref(0)
 const left = ref(0)
+const socket = ref(null);
+const webSocketOption = {
+  onmessage: (data) => {
+    const updateData = JSON.parse(data.data)
+    const rect1 = {
+      x1: updateData.startCol,
+      y1: updateData.startRow,
+      x2: updateData.endCol,
+      y2: updateData.endRow
+
+    }
+    const clientRect = gridRef.value.getBoundingClientRect()
+    let widthNum = Math.floor(clientRect.width / size.value)
+    let heightNum = Math.floor(clientRect.height / size.value)
+    let start = {
+      x: Math.floor(-left.value / size.value),
+      y: Math.floor(-top.value / size.value)
+    }
+    const rect2 = {
+      x1: start.x,
+      y1: start.y,
+      x2: start.x + widthNum,
+      y2: start.y + heightNum
+
+    }
+    if (isIntersect(rect1, rect2)) {
+      updateNum()
+    }
+  }
+}
 onMounted(() => {
+  socket.value = useWebsocket(webSocketOption);
   if (localStorage.getItem("top")) top.value = parseInt(localStorage.getItem("top"))
   if (localStorage.getItem("left")) left.value = parseInt(localStorage.getItem("left"))
   updateNum()
@@ -41,41 +68,41 @@ const style = computed(() => {
 })
 const getCell = (start, heightNum, widthNum) => {
   getCellByNum(start, widthNum, heightNum).then(res => {
-    res.data.data.forEach(item => {
-      if (!cell.value[item.row]) cell.value[item.row] = []
-      cell.value[item.row][item.col] = item
-    })
+    cell.value = res.data.data;
   })
 }
-const flag = (cellItem) => {
+const flag = (cellItem, index) => {
+
   if (cellItem.open === 1) return;
   if (cellItem.open == 2) {
-    cell.value[cellItem.row][cellItem.col].open = 0
+    cell.value[index].open = 0
     cancelFlagCell(cellItem.id).catch((res) => {
       if (res.status !== undefined)
-        cell.value[cellItem.row][cellItem.col] = res.data.data;
+        cell.value[index] = res.data.data;
     })
   }
 
   else {
-    cell.value[cellItem.row][cellItem.col].open = 2
+    cell.value[index].open = 2
     flagCell(cellItem.id).catch((res) => {
       if (res.status !== undefined)
-        cell.value[cellItem.row][cellItem.col] = res.data.data;
+        cell.value[index] = res.data.data;
     })
   }
 
 
 }
-const open = (cellItem) => {
+const open = (cellItem, index) => {
   if (cellItem.open !== 0) return;
-  cell.value[cellItem.row][cellItem.col].open = 1
+  cell.value[index].open = 1
   openCell(cellItem.id, 1).then(() => {
-    if (cellItem.value === 0) updateNum()
   }, (res) => {
     if (res.status !== undefined)
-      cell.value[cellItem.row][cellItem.col] = res.data.data;
+      cell.value[index] = res.data.data;
   })
+}
+const openAll = (cellItem, index) => {
+  console.log(cellItem, index)
 }
 const moveFlag = ref(false)
 
@@ -109,17 +136,7 @@ const updateNum = () => {
   }
   getCell(start, widthNum + 5, heightNum + 5)
 }
-const showList = computed(() => {
-  if (!gridRef.value) return []
-  const clientRect = gridRef.value.getBoundingClientRect()
-  let widthNum = Math.floor(clientRect.width / size.value) + 5
-  let heightNum = Math.floor(clientRect.height / size.value) + 5
-  let start = {
-    x: Math.floor(-left.value / size.value),
-    y: Math.floor(-top.value / size.value)
-  }
-  return cell.value.slice(start.y, start.y + heightNum).map(item => item.slice(start.x, start.x + widthNum))
-})
+
 </script>
 <style scoped lang="scss">
 .grid {
