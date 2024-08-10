@@ -1,6 +1,13 @@
 import http from '@/utils/axios'
-export const getCellByNum = (start, row,col) => {
-  return http.get(`/region/${start.y}-${start.x}/${row}-${col}`)
+export const getCellByNum = (start, row, col) => {
+  return http.get("/region", {
+    params: {
+      startX: start.y,
+      startY: start.x,
+      row: row,
+      col: col
+    }
+  })
 }
 export const openCell = (id) => {
   return http.post(`/open/${id}`)

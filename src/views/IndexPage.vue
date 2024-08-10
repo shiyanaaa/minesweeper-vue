@@ -70,7 +70,9 @@ const flag = (cellItem) => {
 const open = (cellItem) => {
   if (cellItem.open !== 0) return;
   cell.value[cellItem.row][cellItem.col].open = 1
-  openCell(cellItem.id, 1).catch((res) => {
+  openCell(cellItem.id, 1).then(() => {
+    if (cellItem.value === 0) updateNum()
+  }, (res) => {
     if (res.status !== undefined)
       cell.value[cellItem.row][cellItem.col] = res.data.data;
   })
